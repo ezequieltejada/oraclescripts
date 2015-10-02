@@ -1,0 +1,15 @@
+#1) Check if the directory that holds the exports is in the dba_directories table
+select * from dba_directories;
+
+#2) If it is not created, create it.
+create or replace directory exports as '{{DIRECTORY WHERE IS THE DUMP}}';
+
+#3) Create parameter file (parfile.lst) and set the parameters:
+full=Y
+dumpfile=name.dmp
+logfile=nameLog.log
+directory=exports
+table_exists_action=replace
+
+#4) Run "impdp" as follows
+impdp \"/ as sysdba\" parfile=parfile.lst
