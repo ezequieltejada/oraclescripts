@@ -1,0 +1,22 @@
+rman target / nocatalog
+1) Se baja la base con la sentencia "shutdown immediate;"
+2) Se monta la base en modo "mount" con la sentencia "startup mount"
+3) Ejecutar el siguiente script en RMAN [ rman target / nocatalog ]
+
+backup full format 'E:\backups\(SID)\%d_%s_%p'
+tag='full_(SID)'
+(database include current controlfile);
+
+4) Copiamos los archivos generados al servidor de standby
+5) Se inicia la base en RMAN en modo nomount con las siguientes 2 sentencias: "rman target / nocatalog" y "startup nomount;"
+6) Hacer un restore de los control files que generó el backup en el servidor de producción (y que copiamos en el paso) "restore controlfile from 'E:\backups\(SID)\(SID)_21_1';"
+7) Se abre la base en RMAN con la sentencia: "alter database mount;"
+8) Se hace un restore de la base en RMAN con la sentencia: "restore database;"
+9) En la base primaria hay que generar el control file para la base de standby y mover el archivo a la standby "alter database create standby controlfile as 'E:\(SID)_CTL_STNDBY.ctl';"
+10) En la base de standby, hay que hacer backup de los control files y reemplazarlos por el que generó la base de producción (poniendo el mismo nombre que los anteriores)
+11) Intentar inciar la base en modo nomount para ver si hay conflictos con los cambios en los control files.
+12) Montar la base de standby con la sentencia: "alter database mount standby database;" y chequear el numero de secuencia con la consulta: "select max(sequence#) from v$log_history;"
+13) En la base primaria generamos 2 switch con la sentencia: "alter system switch logfile;" y chequeamos el número de secuencia con la consulta: "select max(sequence#) from v$log_history;"
+14) En la standby se chequea que esté en modo standby con la consulta: "select FORCE_LOGGING, LOG_MODE, DATABASE_ROLE from v$database;"
+15) Setear el log_archive_dest_1 en la standby con la sentencia: "alter system set log_archive_dest_1='location=E:\archive\(SID)' scope = both;"
+16) En la standby se chequea que esté en modo standby con la consulta: "select FORCE_LOGGING, LOG_MODE, DATABASE_ROLE from v$database;" y se ejecuta un recovery con la sentencia: "recover standby database;"
