@@ -1,0 +1,31 @@
+1) Se crea una base con DBCA con todos los parámetros en default excepto (Sin "Flash Recovery Area")
+2) En la base de RMAN se crea un usuario (preferiblemente con las credenciales "rmanuser/rmanuser") con la sentencia: "create user rmanuser identified by rmanuser;"
+3) Dar los permisos necesarios al usuario recien creado con las siguientes 2 sentencias: "grant recovery_catalog_owner to rmanuser;" y "grant connect, resource to rmanuser;"
+4) Se loguea el usuario recien creado en RMAN saliendo de SQLPlus y ejecutando: "rman catalog rmanuser/rmanuser" en la linea de comandos de la base
+5) Dentro de RMAN se crea el catalogo con la sentencia "create catalog;"
+6) Se sale de RMAN y se conecta a RMAN pero indicando la base, ejecutando: "rman target / catalog rmanuser/rmanuser@dbrman"
+7) Se registra la base de datos con el comando: "register database;"
+8) Se chequea que la registración haya sido exitosa con la sentencia: "report schema;"
+9) Se crea un archivo .bat para que llame al script de RMAN con el siguiente contenido: 
+"set ORACLE_SID=RHPRO
+rman target / catalog rmanuser/rmanuser@(SID) E:\backups\scripts\level0(SID).rcv log=E:\backups\logs\bk(SID).log"
+10) Generar el script que va a hacer el backup en RMAN con el siguiente contenido:
+"
+run{
+allocate channel d1 type disk;
+resync catalog;
+backup full
+ format 'E:\backups\(SID)\rman\bkp_%d_%s_%p_%t'
+tag 'diario_(SID)_full'
+(database include current controlfile);
+sql 'alter system archive log current';
+release channel d1;
+allocate channel d1 type disk;
+change archivelog all crosscheck;
+backup archivelog all delete input format 'E:\backups\(SID)\rman\bkparc_%d_%s_%p_%t_%e'
+tag 'diario_(SID)_arch';
+release channel d1;
+}
+delete force noprompt obsolete;
+"
+11) Se programa para que se corra el .bat diariamente en un horario de poca carga en el servidor.
