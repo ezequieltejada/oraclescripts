@@ -1,0 +1,72 @@
+1) Chequeo si esta activado el "force_logging" en la base de producción con el comando "select FORCE_LOGGING from  v$database;" (imagen 1)
+
+2) Seteo y re-chequeo del force_logging en la base de producción con los comandos "alter database force logging;" y "select FORCE_LOGGING from  v$database;" (imagen 2)
+
+3) Copiar los archivos init(SID).ora y orapw(SID) del directorio "%ORACLE_HOME%\dbs" de producción al mismo directorio del servidor de stand-by.
+
+3.1) Si el archivo "orapw(SID)" no se encuentra en "%ORACLE_HOME%\dbs" generarlo con el comando "orapwd FILE=orapw(SID)"
+
+(en caso de que se haya creado la base sin archivelog) 4) Se activa el archivelog mode: http://www.oracledistilled.com/oracle-database/backup-and-recovery/enabledisable-archive-log-mode-10g11g/
+ 
+4.1) Se chequea el estado del archive con la consulta "archive log list;"
+4.2) Setear el destino de los archive log con la sentencia "alter system set log_archive_dest_1='LOCATION=/u02/app/oracle/oradata/orcl/arch' scope = both;"
+4.3) Chequear que se haya aplicado el cambio con la consulta: "archive log list;"
+4.4) Bajar la base: "shutdown immediate"
+4.5) Subir la base en modo "mount": "startup mount"
+4.6) Activar el archivelog mode con la sentencia: "alter database archivelog;"
+4.7) Abir la base con la sentencia: "alter database open;"
+4.8) Chequear el estado del archivelog con la consulta: "archive log list;"
+4.9) Forzar la generación de un archive nuevo con la sentencia: "alter system switch logfile;"
+4.10) Chequear en el filesystem si la base creó el nuevo archivelog
+
+5) Ejecutar el siguiente script en RMAN [ rman target / nocatalog ] de la base primaria:
+
+run{
+allocate channel d1 type disk;
+backup full format 'E:\backups\(SID)\%d_%s_%p'
+tag='full_(SID)'
+(database include current controlfile);
+sql 'alter system archive log current';
+change archivelog all crosscheck;
+backup archivelog all delete input format 'E:\backups\(SID)\bkparcs_%d_%s_%p_%t_%e'
+tag 'bkp_diario_archives';
+release channel d1;
+}
+
+6) Se copia el backup del server de producción al de standby.
+
+7) Se inicia la base de datos standby en modo nomount con el pfile copiado desde el servidor de producción: "startup nomount pfile='INIT(SID).ora';"
+
+8) Se crea el SPFILE desde el PFILE en el servidor de standby con la sentencia "create spfile from pfile;"
+
+9) Se baja la base con la sentencia "shutdown immediate"
+
+10) Se inicia la base en RMAN en modo nomount con las siguientes 2 sentencias: "rman target / nocatalog" y "startup nomount;"
+
+11) Setear el dbid del server de standby con el mismo dbid que el server de producción con la sentencia: "set dbid 283072312;"
+
+12) Hacer un restore de los control files que generó el backup en el servidor de producción (y que copiamos en el paso) "restore controlfile from 'E:\backups\(SID)\RHPRO_2_1';"
+
+13) Se abre la base en RMAN con la sentencia: "alter database mount;"
+
+14) Se hace un restore de la base en RMAN con la sentencia: "restore database;"
+
+15) En la base primaria hay que generar el control file para la base de standby y mover el archivo a la standby
+
+16) En la base de standby, hay que bajarla con la sentencia "shutdown immediate;" 
+
+17) En la base de standby, hay que hacer backup de los control files y reemplazarlos por el que generó la base de producción (poniendo el mismo nombre que los anteriores)
+
+18) Intentar inciar la base en modo nomount para ver si hay conflictos con los cambios en los control files.
+
+19) Montar la base de standby con la sentencia: "alter database mount standby database;" y chequear el numero de secuencia con la consulta: "select max(sequence#) from v$log_history;"
+
+20) En la base primaria generamos 2 switch con la sentencia: "alter system switch logfile;" y chequeamos el número de secuencia con la consulta: "select max(sequence#) from v$log_history;"
+
+21) En la standby se chequea que esté en modo standby con la consulta: "select FORCE_LOGGING, LOG_MODE, DATABASE_ROLE from v$database;"
+
+22) Setear el log_archive_dest_1 en la standby con la sentencia: "alter system set log_archive_dest_1='location=E:\archive\(SID)' scope = both;"
+
+23) Mover los archive de la base primaria a las bases de standby
+
+23) En la standby se chequea que esté en modo standby con la consulta: "select FORCE_LOGGING, LOG_MODE, DATABASE_ROLE from v$database;" y se ejecuta un recovery con la sentencia: "recover standby database;"
