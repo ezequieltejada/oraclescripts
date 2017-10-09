@@ -31,6 +31,9 @@ select NAME, VALUE from v$parameter where name='spfile';
 PROMPT--Versión de Motor
 select * from v$version;
 
+PROMPT--Characterset de la base
+SELECT value$ FROM sys.props$ WHERE name = 'NLS_CHARACTERSET';
+
 PROMPT--Información de la base de datos
 select DBID, NAME, CREATED, LOG_MODE from v$database;
 
