@@ -11,5 +11,7 @@ logfile=nameLog.log
 directory=exports
 table_exists_action=replace
 
-#4) Run "impdp" as follows
+#4 Recreate tablespaces, roles, users (in that order)
+
+#5) Run "impdp" as follows
 impdp \"/ as sysdba\" parfile=parfile.lst
