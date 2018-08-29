@@ -47,6 +47,6 @@ AND l1.id1 = l2.id1
 AND l1.id2 = l2.id2;
 
 
-Se reportan si hay algo a Guillermo o no. Si quieren matar agluna sesion en especifico usar:
+Si quieren matar agluna sesion en especifico usar:
 
 ALTER SYSTEM KILL SESSION 'sid,serial#' IMMEDIATE;
