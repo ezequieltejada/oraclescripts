@@ -1,5 +1,7 @@
-## in terminal set UTF8
-## NLS_LANG=AMERICAN_AMERICA.UTF8; export NLS_LANG
+# in terminal set UTF8
+# NLS_LANG=AMERICAN_AMERICA.UTF8; export NLS_LANG
+
+# check space: df -g | awk '{print $1","$2","$3","$4","$5","$6","$7}'
 
 DEFINE ORA_DB = &1
 set term off
