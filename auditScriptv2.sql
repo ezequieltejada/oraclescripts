@@ -18,11 +18,11 @@ DECLARE
 	CURSOR audit_tablespaces
 	IS 
 		SELECT definido.tablespace tablespace, definido.total total, TRUNC(NVL(usado.total,0),2) ocupado, TRUNC(NVL(usado.total*100/definido.total,0),2) porcentaje
-		FROM (SELECT t.name AS tablespace, Sum(bytes)/1048576 AS total
+		FROM (SELECT t.name AS tablespace, NVL(NULLIF(Sum(bytes)/1048576,0),1) AS total
 		FROM v$tablespace t, v$datafile d
 		WHERE d.ts#=t.ts#
 		GROUP BY (t.name)) definido,
-		(SELECT tablespace_name tablespace, sum(bytes)/1048576 AS total
+		(SELECT tablespace_name tablespace, NVL(NULLIF(sum(bytes)/1048576,0),1) AS total
 		FROM dba_segments
 		GROUP BY (tablespace_name)) usado
 		WHERE definido.tablespace=usado.tablespace(+);
